@@ -40,9 +40,10 @@ export const updateMerchantSchema = z
     logoUrl: z.string().url().optional(),
     brandColor: hexColor.optional(),
   })
-  .refine((d) => Object.keys(d).length > 0, {
-    message: "At least one field is required",
-  });
+  .refine(
+    (d) => Object.values(d).some((v) => v !== undefined),
+    { message: "At least one field is required" },
+  );
 
 export const setStaffPinSchema = z
   .object({

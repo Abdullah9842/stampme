@@ -62,4 +62,8 @@ describe("updateMerchantSchema", () => {
     expect(updateMerchantSchema.safeParse({ name: "New" }).success).toBe(true);
     expect(updateMerchantSchema.safeParse({ brandColor: "#ffffff" }).success).toBe(true);
   });
+
+  it("rejects payload where all fields are explicitly undefined", () => {
+    expect(updateMerchantSchema.safeParse({ name: undefined, vertical: undefined }).success).toBe(false);
+  });
 });

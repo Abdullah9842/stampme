@@ -22,7 +22,7 @@ export const updateCardSchema = z
     rewardLabel: z.string().trim().min(1).max(50).optional(),
   })
   .refine(
-    (d) => Object.keys(d).filter((k) => k !== "id").length > 0,
+    (d) => Object.entries(d).some(([k, v]) => k !== "id" && v !== undefined),
     { message: "At least one field is required" },
   );
 

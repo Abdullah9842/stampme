@@ -38,4 +38,8 @@ describe("updateCardSchema", () => {
     expect(updateCardSchema.safeParse({ id: "abc" }).success).toBe(false);
     expect(updateCardSchema.safeParse({ id: "abc", programName: "New" }).success).toBe(true);
   });
+
+  it("rejects payload where only id is defined and other fields are undefined", () => {
+    expect(updateCardSchema.safeParse({ id: "abc", programName: undefined }).success).toBe(false);
+  });
 });
