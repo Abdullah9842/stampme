@@ -60,3 +60,5 @@ yarn-error.log*
 # Superpowers (agent state — never commit)
 .superpowers/
 .claude/
+
+/src/generated/prisma

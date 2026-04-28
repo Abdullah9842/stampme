@@ -1,0 +1,150 @@
+// Prisma 7: driverAdapters is GA — no longer needs to be in previewFeatures.
+generator client {
+  provider = "prisma-client-js"
+}
+
+// NOTE: Prisma 7 — connection URLs (`url`, `directUrl`) live in prisma.config.ts,
+// not here. The runtime client (src/lib/db.ts) connects via the Neon adapter
+// using env.DATABASE_URL directly.
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Enums (spec §7) ----------
+
+enum Vertical {
+  CAFE
+  SALON
+  JUICE
+  BAKERY
+  LAUNDRY
+  OTHER
+}
+
+enum Plan {
+  STARTER
+  GROWTH
+  PRO
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum PassStatus {
+  ACTIVE
+  REDEEMED
+  EXPIRED
+  DELETED
+}
+
+// ---------- Models (spec §7) ----------
+
+model Merchant {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  logoUrl     String?
+  brandColor  String   @default("#000000")
+  vertical    Vertical
+  ownerEmail  String   @unique
+  ownerPhone  String
+  clerkUserId String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subscription Subscription?
+  programs     LoyaltyProgram[]
+  staffPins    StaffPin[]
+
+  @@index([clerkUserId])
+}
+
+model Subscription {
+  id               String             @id @default(cuid())
+  merchantId       String             @unique
+  plan             Plan
+  status           SubscriptionStatus
+  hyperpayRef      String?
+  currentPeriodEnd DateTime
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+}
+
+model StaffPin {
+  id         String   @id @default(cuid())
+  merchantId String
+  pinHash    String
+  label      String
+  createdAt  DateTime @default(now())
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@index([merchantId])
+}
+
+model LoyaltyProgram {
+  id               String  @id @default(cuid())
+  merchantId       String
+  name             String
+  stampsRequired   Int     @default(10)
+  rewardLabel      String
+  passKitProgramId String  @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  passes   Pass[]
+
+  @@index([merchantId])
+}
+
+model Pass {
+  id              String     @id @default(cuid())
+  programId       String
+  customerPhone   String
+  passKitPassId   String     @unique
+  applePassUrl    String?
+  googleWalletUrl String?
+  stampsCount     Int        @default(0)
+  status          PassStatus @default(ACTIVE)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  program     LoyaltyProgram     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  events      StampEvent[]
+  redemptions RewardRedemption[]
+
+  @@index([programId, customerPhone])
+  @@index([status])
+}
+
+model StampEvent {
+  id         String   @id @default(cuid())
+  passId     String
+  staffPinId String
+  source     String   @default("scanner")
+  createdAt  DateTime @default(now())
+
+  pass Pass @relation(fields: [passId], references: [id], onDelete: Cascade)
+
+  @@index([passId])
+  @@index([createdAt])
+}
+
+model RewardRedemption {
+  id         String   @id @default(cuid())
+  passId     String
+  staffPinId String
+  redeemedAt DateTime @default(now())
+
+  pass Pass @relation(fields: [passId], references: [id], onDelete: Cascade)
+
+  @@index([passId])
+  @@index([redeemedAt])
+}
