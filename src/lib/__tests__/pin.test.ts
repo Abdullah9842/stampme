@@ -35,7 +35,7 @@ describe("hashPin / verifyPin", () => {
     const a = await hashPin("1234");
     const b = await hashPin("1234");
     expect(a).not.toBe(b);
-  }, 10000);
+  });
 
   it("throws on invalid PIN format at hash time", async () => {
     await expect(hashPin("abc")).rejects.toThrow(/4 digits/);
