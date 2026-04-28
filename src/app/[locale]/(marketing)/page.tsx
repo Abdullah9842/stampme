@@ -1,4 +1,8 @@
 import { setRequestLocale } from "next-intl/server";
+import { Hero } from "@/components/marketing/Hero";
+import { HowItWorks } from "@/components/marketing/HowItWorks";
+import { Pricing } from "@/components/marketing/Pricing";
+import { Footer } from "@/components/marketing/Footer";
 
 export default async function MarketingHome({
   params,
@@ -7,10 +11,15 @@ export default async function MarketingHome({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+
   return (
-    <main className="container mx-auto p-12">
-      <h1 className="text-4xl font-bold">stampme</h1>
-      <p className="mt-4 text-muted-foreground">Locale: {locale}</p>
-    </main>
+    <>
+      <main>
+        <Hero />
+        <HowItWorks />
+        <Pricing />
+      </main>
+      <Footer />
+    </>
   );
 }
