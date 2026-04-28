@@ -15,13 +15,22 @@ export function generateMerchantSlug(input: string): string {
     .replace(/[^a-z0-9-]/g, "")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
-    .slice(0, 48);
+    .slice(0, 48)
+    .replace(/-+$/, "");
 
   return slug || "merchant";
 }
 
 export type SlugExistsCheck = (slug: string) => Promise<boolean>;
 
+/**
+ * Finds an unused slug by trying base, base-2..base-50, then base-{nanoid(6)}.
+ *
+ * NOTE: This is check-then-act. Concurrent callers can both observe "available"
+ * and both attempt to insert — the caller MUST handle Prisma P2002 unique
+ * constraint violations by retrying. Do not trust the returned slug to still
+ * be unique by the time you write it.
+ */
 export async function ensureUniqueSlug(
   base: string,
   exists: SlugExistsCheck,

@@ -25,6 +25,17 @@ describe("generateMerchantSlug", () => {
     const long = "a".repeat(100);
     expect(generateMerchantSlug(long).length).toBeLessThanOrEqual(48);
   });
+
+  it("does not leave a trailing hyphen after 48-char truncation", () => {
+    // Construct an input where the slug, before slicing, is longer than 48 and
+    // would land a hyphen exactly at index 47.
+    // e.g. "ab-".repeat(20) → "ab-ab-ab-ab-ab-ab-ab-ab-ab-ab-ab-ab-ab-ab-ab-ab-ab-ab-ab-ab-"
+    // (60 chars, hyphens at every 3rd position; slice(0,48) cuts on a hyphen)
+    const input = "ab-".repeat(20);
+    const result = generateMerchantSlug(input);
+    expect(result.endsWith("-")).toBe(false);
+    expect(result.length).toBeLessThanOrEqual(48);
+  });
 });
 
 describe("ensureUniqueSlug", () => {
