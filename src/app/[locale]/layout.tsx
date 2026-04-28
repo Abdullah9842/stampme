@@ -3,6 +3,8 @@ import { Tajawal } from "next/font/google";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { setRequestLocale, getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { ClerkProvider } from "@clerk/nextjs";
+import { arSA, enUS } from "@clerk/localizations";
 import { routing, type Locale } from "@/lib/i18n/routing";
 
 const tajawal = Tajawal({
@@ -35,14 +37,17 @@ export default async function LocaleLayout({
 
   const messages = await getMessages();
   const dir = (locale as Locale) === "ar" ? "rtl" : "ltr";
+  const clerkLocalization = (locale as Locale) === "ar" ? arSA : enUS;
 
   return (
-    <html lang={locale} dir={dir} className={tajawal.variable} suppressHydrationWarning>
-      <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          {children}
-        </NextIntlClientProvider>
-      </body>
-    </html>
+    <ClerkProvider localization={clerkLocalization}>
+      <html lang={locale} dir={dir} className={tajawal.variable} suppressHydrationWarning>
+        <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
+          <NextIntlClientProvider locale={locale} messages={messages}>
+            {children}
+          </NextIntlClientProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
