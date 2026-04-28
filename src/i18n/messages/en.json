@@ -1,0 +1,67 @@
+{
+  "Marketing": {
+    "nav": {
+      "features": "Features",
+      "pricing": "Pricing",
+      "signIn": "Sign in",
+      "signUp": "Get started"
+    },
+    "hero": {
+      "badge": "New",
+      "title": "Digital loyalty cards for your shop in 10 minutes",
+      "subtitle": "Issue branded loyalty cards on Apple Wallet and Google Wallet — no app, no developer, fully Arabic-first.",
+      "ctaPrimary": "Start 14-day free trial",
+      "ctaSecondary": "See how it works",
+      "trust": "No credit card • Cancel anytime"
+    },
+    "howItWorks": {
+      "title": "How it works",
+      "subtitle": "Three steps to your first loyal customer",
+      "steps": {
+        "design": {
+          "title": "Design your card",
+          "body": "Upload your logo, pick a color, set stamp count and reward. Live preview of the wallet card."
+        },
+        "share": {
+          "title": "Share a QR code",
+          "body": "Get a printable QR for the counter, or a link for Instagram and WhatsApp."
+        },
+        "redeem": {
+          "title": "Stamp & reward",
+          "body": "Each visit, the cashier scans from the customer's wallet. The card auto-updates and notifies them."
+        }
+      }
+    },
+    "pricing": {
+      "title": "Simple pricing, no surprises",
+      "subtitle": "Start with Starter — enough for 300 customers per month",
+      "plan": {
+        "name": "Starter",
+        "price": "99",
+        "currency": "SAR",
+        "period": "per month",
+        "features": [
+          "Up to 300 passes/month",
+          "1 customizable loyalty card",
+          "Apple Wallet + Google Wallet",
+          "PWA scanner for cashier phones",
+          "Basic reports (issued, stamped, redeemed)",
+          "Arabic email support"
+        ],
+        "cta": "Start 14-day trial"
+      },
+      "vat": "Price excludes 15% VAT"
+    },
+    "footer": {
+      "tagline": "Simple digital loyalty cards for KSA merchants",
+      "rights": "All rights reserved",
+      "privacy": "Privacy policy",
+      "terms": "Terms of service"
+    },
+    "localeSwitcher": {
+      "label": "Language",
+      "ar": "العربيّة",
+      "en": "English"
+    }
+  }
+}
