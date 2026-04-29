@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+vi.mock("next/server", () => ({
+  after: (fn: () => Promise<unknown>) => { void fn(); },
+}));
+
 const { programCreate, programUpdate, programFindFirst, programFindMany, requireMerchant } = vi.hoisted(() => ({
   programCreate: vi.fn(),
   programUpdate: vi.fn(),

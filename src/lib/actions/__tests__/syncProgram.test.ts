@@ -67,9 +67,14 @@ describe("syncProgram", () => {
     expect(updateProgramTemplate).toHaveBeenCalledOnce();
   });
 
-  it("missing logo throws", async () => {
+  it("missing logo falls back to default icon (no throw)", async () => {
     findUnique.mockResolvedValue({ ...baseProgram, merchant: { ...baseProgram.merchant, logoUrl: null } });
-    await expect(syncProgram({ loyaltyProgramId: "lp_1" })).rejects.toThrow(/logo/i);
+    createProgram.mockResolvedValue({ passKitProgramId: "prg_x", passKitTemplateId: "tpl_x" });
+    update.mockResolvedValue({});
+    updateProgramTemplate.mockResolvedValue(undefined);
+    const out = await syncProgram({ loyaltyProgramId: "lp_1" });
+    expect(out.passKitProgramId).toBe("prg_x");
+    expect(out.created).toBe(true);
   });
 
   it("rejects non-owner sync", async () => {
