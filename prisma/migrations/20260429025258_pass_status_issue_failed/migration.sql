@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "PassStatus" ADD VALUE 'ISSUE_FAILED';

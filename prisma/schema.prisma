@@ -39,6 +39,7 @@ enum PassStatus {
   REDEEMED
   EXPIRED
   DELETED
+  ISSUE_FAILED
 }
 
 // ---------- Models (spec §7) ----------
