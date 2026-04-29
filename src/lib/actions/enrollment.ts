@@ -99,6 +99,13 @@ export async function enrollCustomer(input: unknown): Promise<EnrollResult> {
       };
     }
 
+    Sentry.addBreadcrumb({
+      category: "enrollment",
+      message: "issuing pass",
+      level: "info",
+      data: { merchantSlug, programId: program.passKitProgramId },
+    });
+
     const issued = await issuePass({
       programId: program.passKitProgramId,
       customerPhone: phone,

@@ -25,7 +25,10 @@ const { enrollIpLimit, enrollPhoneLimit, recoverPhoneLimit } = vi.hoisted(() => 
 
 const { verifySigMock } = vi.hoisted(() => ({ verifySigMock: vi.fn() }));
 
-const { captureExceptionMock } = vi.hoisted(() => ({ captureExceptionMock: vi.fn() }));
+const { captureExceptionMock, addBreadcrumbMock } = vi.hoisted(() => ({
+  captureExceptionMock: vi.fn(),
+  addBreadcrumbMock: vi.fn(),
+}));
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -54,6 +57,7 @@ vi.mock("@/lib/hmac", () => ({
 
 vi.mock("@sentry/nextjs", () => ({
   captureException: captureExceptionMock,
+  addBreadcrumb: addBreadcrumbMock,
 }));
 
 vi.mock("next/headers", () => ({
