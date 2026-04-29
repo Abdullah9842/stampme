@@ -90,12 +90,19 @@ export async function createProgram(input: CreateProgramInput): Promise<CreatePr
   // ── Step 2: customize template ──────────────────────────────────────────
   template.setName(name);
   template.setDescription(rewardLabel);
-  // Colors is a nested message — create fresh to avoid mutating a shared reference.
-  const colors = new Colors();
-  colors.setBackgroundcolor(brandColor);
-  colors.setForegroundcolor("#FFFFFF");
-  colors.setLabelcolor("#FFFFFF");
-  template.setColors(colors);
+  // Mutate the default template's Colors in place — replacing the whole Colors
+  // object wipes fields PassKit requires (textcolor etc.) and triggers
+  // INVALID_ARGUMENT "colors have incorrect format".
+  const existingColors = template.getColors();
+  if (existingColors) {
+    existingColors.setBackgroundcolor(brandColor);
+  } else {
+    const colors = new Colors();
+    colors.setBackgroundcolor(brandColor);
+    colors.setForegroundcolor("#FFFFFF");
+    colors.setLabelcolor("#FFFFFF");
+    template.setColors(colors);
+  }
   // Timezone is required by the quickstart; UTC is a safe default.
   template.setTimezone("UTC");
 
