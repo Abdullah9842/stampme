@@ -4,7 +4,7 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { redirect } from "@/lib/i18n/navigation";
 import { getLocale } from "next-intl/server";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getClerkUserIdOrThrow } from "@/lib/auth/current-merchant";

@@ -61,7 +61,7 @@ export async function setStaffPin(
 
   const pinHash = await hashPin(parsed.data.pin);
 
-  await db.$transaction(async (tx: any) => {
+  await db.$transaction(async (tx) => {
     await tx.staffPin.deleteMany({ where: { merchantId: merchant.id } });
     await tx.staffPin.create({
       data: {

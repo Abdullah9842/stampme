@@ -53,7 +53,7 @@ describe("finishOnboarding", () => {
       vertical: "CAFE",
       brandColor: "#000000",
       acceptedTerms: true,
-    } as any);
+    } as Parameters<typeof finishOnboarding>[0]);
     expect(result.ok).toBe(false);
   });
 
@@ -63,7 +63,7 @@ describe("finishOnboarding", () => {
       vertical: "CAFE",
       brandColor: "#112233",
       // acceptedTerms omitted on purpose
-    } as any);
+    } as Parameters<typeof finishOnboarding>[0]);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/terms/i);
   });
