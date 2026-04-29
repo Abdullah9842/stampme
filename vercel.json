@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/cron/margin-alert", "schedule": "0 8 * * *" }
+  ]
+}
