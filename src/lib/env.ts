@@ -43,7 +43,7 @@ const schema = z.object({
   HYPERPAY_ENTITY_ID_CARD: z.string().optional(),
   HYPERPAY_WEBHOOK_KEY_HEX: z.string().optional(),
 
-  PASSKIT_API_URL: urlWithDefault("https://api.pub2.passkit.io"),
+  PASSKIT_API_URL: urlWithDefault("https://api.pub1.passkit.io"),
   PASSKIT_API_KEY: z.string().min(1),
   PASSKIT_PUBLIC_KEY: z.string().min(1),
   PASSKIT_PRIVATE_KEY: z.string().min(1),

@@ -15,7 +15,7 @@
 
 | Variable | Where to get it | Required |
 |---|---|---|
-| `PASSKIT_API_URL` | `https://api.pub2.passkit.io` (hardcoded default) | yes |
+| `PASSKIT_API_URL` | Region-specific (Europe → `https://api.pub1.passkit.io`, others vary). Check **PassKit dashboard → API Region** | yes |
 | `PASSKIT_API_KEY` | PassKit dashboard → API Keys | yes |
 | `PASSKIT_PUBLIC_KEY` | Keypair download (PEM) | yes |
 | `PASSKIT_PRIVATE_KEY` | Keypair download (PEM) | yes |
