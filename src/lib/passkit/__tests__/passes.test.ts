@@ -25,27 +25,21 @@ vi.mock("@/lib/env", () => ({
   },
 }));
 
+const { findUniqueProgram, findUniquePass, createPass } = vi.hoisted(() => ({
+  findUniqueProgram: vi.fn().mockResolvedValue({ id: "lp_1", passKitProgramId: "prg_1", stampsRequired: 10 }),
+  findUniquePass: vi.fn().mockResolvedValue({ id: "p_1", passKitPassId: "psk_x", program: { stampsRequired: 10 } }),
+  createPass: vi.fn(),
+}));
+
 vi.mock("@/lib/db", () => ({
   db: {
-    loyaltyProgram: {
-      findUnique: vi.fn().mockResolvedValue({
-        id: "lp_1",
-        passKitProgramId: "prg_1",
-        stampsRequired: 10,
-      }),
-    },
-    pass: {
-      findUnique: vi.fn().mockResolvedValue({
-        id: "p_1",
-        passKitPassId: "psk_x",
-        program: { stampsRequired: 10 },
-      }),
-    },
+    loyaltyProgram: { findUnique: findUniqueProgram },
+    pass: { findUnique: findUniquePass, create: createPass },
   },
 }));
 
 import { server } from "./msw-server";
-import { issuePass, markRedeemed, updatePassStamps } from "../passes";
+import { issuePass, markRedeemed, updatePassStamps, flagPassIssueFailure } from "../passes";
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => server.resetHandlers());
@@ -103,5 +97,25 @@ describe("markRedeemed", () => {
       }),
     );
     await markRedeemed({ passKitPassId: "psk_x", idempotencyKey: "redeem-psk_x-1" });
+  });
+});
+
+describe("flagPassIssueFailure", () => {
+  it("writes a Pass row with ISSUE_FAILED status", async () => {
+    createPass.mockResolvedValue({ id: "p_failed" });
+    await flagPassIssueFailure({
+      programId: "lp_1",
+      customerPhone: "+966500000000",
+      reason: "upstream 500",
+    });
+    expect(createPass).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        programId: "lp_1",
+        customerPhone: "+966500000000",
+        status: "ISSUE_FAILED",
+        stampsCount: 0,
+        passKitPassId: expect.stringMatching(/^failed_/),
+      }),
+    });
   });
 });

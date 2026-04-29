@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { passkitClient } from "./client";
 import { db } from "@/lib/db";
 import {
@@ -116,4 +117,20 @@ export async function markRedeemed(input: MarkRedeemedInput): Promise<void> {
       idempotencyKey,
     },
   );
+}
+
+export async function flagPassIssueFailure(opts: {
+  programId: string;
+  customerPhone: string;
+  reason: string;
+}): Promise<void> {
+  await db.pass.create({
+    data: {
+      programId: opts.programId,
+      customerPhone: opts.customerPhone,
+      passKitPassId: `failed_${randomUUID()}`,
+      status: "ISSUE_FAILED",
+      stampsCount: 0,
+    },
+  });
 }
