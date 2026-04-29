@@ -24,6 +24,13 @@ vi.mock("@/lib/auth/current-merchant", () => ({
   getClerkUserIdOrThrow: vi.fn().mockResolvedValue("user_x"),
 }));
 
+// Plan 3 added a fire-and-forget syncProgram() call after createCard's DB write.
+// Mock the syncProgram import chain so env validation (which now requires PassKit
+// vars) doesn't fire during this test file's evaluation.
+vi.mock("@/lib/actions/syncProgram", () => ({
+  syncProgram: vi.fn().mockResolvedValue({ passKitProgramId: "prg_stub", created: false }),
+}));
+
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import { createCard, updateCard, listCards } from "@/lib/actions/cards";

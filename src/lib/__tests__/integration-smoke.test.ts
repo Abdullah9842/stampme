@@ -30,8 +30,38 @@ vi.mock("@/lib/db", () => ({
     merchant: { findUnique: vi.fn(), findFirst: vi.fn(), upsert: vi.fn(), update: vi.fn() },
     loyaltyProgram: { create: vi.fn(), update: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() },
     staffPin: { deleteMany: vi.fn(), create: vi.fn(), findFirst: vi.fn() },
+    pass: { findUnique: vi.fn(), create: vi.fn() },
     $transaction: vi.fn(),
   },
+}));
+
+// Plan 3: env.ts now requires PassKit vars; mock env to bypass Zod validation
+// at module-load time when this test pulls in the action import chain.
+vi.mock("@/lib/env", () => ({
+  env: {
+    NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+    NODE_ENV: "test",
+    PASSKIT_API_URL: "https://api.pub1.passkit.io",
+    PASSKIT_API_KEY: "stub",
+    PASSKIT_PUBLIC_KEY: "stub",
+    PASSKIT_PRIVATE_KEY: "stub",
+    PASSKIT_WEBHOOK_SECRET: "stub",
+    CRON_SECRET: "stub-cron-secret-for-smoke-test-only",
+    MARGIN_ALERT_EMAIL: "smoke@test.local",
+    MARGIN_PASS_COST_USD: 0.10,
+  },
+}));
+vi.mock("jose", () => ({
+  SignJWT: vi.fn().mockImplementation(function () {
+    return {
+      setProtectedHeader: vi.fn().mockReturnThis(),
+      setIssuedAt: vi.fn().mockReturnThis(),
+      setExpirationTime: vi.fn().mockReturnThis(),
+      setIssuer: vi.fn().mockReturnThis(),
+      sign: vi.fn().mockResolvedValue("test-jwt"),
+    };
+  }),
+  importPKCS8: vi.fn().mockResolvedValue("mock-key"),
 }));
 
 describe("plan-2 surface area", () => {
