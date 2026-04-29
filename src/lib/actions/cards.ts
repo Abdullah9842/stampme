@@ -2,6 +2,7 @@
 
 import "server-only";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { db } from "@/lib/db";
 import { requireMerchant } from "@/lib/auth/current-merchant";
@@ -39,9 +40,16 @@ export async function createCard(
     },
   });
 
-  // Fire-and-forget: sync failure should never block card creation
-  syncProgram({ loyaltyProgramId: program.id }).catch((e) => {
-    Sentry.captureException(e, { tags: { stage: "card-create-sync" } });
+  // Run syncProgram AFTER the response is sent — Vercel's `after()` keeps the
+  // function alive long enough for the gRPC roundtrip (~1-3s) without blocking
+  // the user. Plain fire-and-forget gets killed when the lambda freezes after
+  // returning the response.
+  after(async () => {
+    try {
+      await syncProgram({ loyaltyProgramId: program.id });
+    } catch (e) {
+      Sentry.captureException(e, { tags: { stage: "card-create-sync" } });
+    }
   });
 
   revalidatePath("/cards");
