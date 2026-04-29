@@ -45,8 +45,7 @@ const schema = z.object({
 
   PASSKIT_API_URL: urlWithDefault("https://api.pub1.passkit.io"),
   PASSKIT_API_KEY: z.string().min(1),
-  PASSKIT_PUBLIC_KEY: z.string().min(1),
-  PASSKIT_PRIVATE_KEY: z.string().min(1),
+  PASSKIT_API_SECRET: z.string().min(1),
   PASSKIT_WEBHOOK_SECRET: z.string().min(1),
   PASSKIT_DEFAULT_TEMPLATE_ID: z.string().optional(),
   MARGIN_ALERT_EMAIL: z.string().email(),

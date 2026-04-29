@@ -19,8 +19,7 @@ vi.mock("@/lib/env", () => ({
   env: {
     PASSKIT_API_URL: "https://api.pub1.passkit.io",
     PASSKIT_API_KEY: "pk_test_stub",
-    PASSKIT_PUBLIC_KEY: "stub-public",
-    PASSKIT_PRIVATE_KEY: "stub-private",
+    PASSKIT_API_SECRET: "stub-secret",
     PASSKIT_WEBHOOK_SECRET: "whsec_stub",
     NODE_ENV: "test",
   },

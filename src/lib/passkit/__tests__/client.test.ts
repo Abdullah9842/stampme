@@ -6,8 +6,7 @@ vi.mock("@/lib/env", () => ({
   env: {
     PASSKIT_API_URL: "https://api.pub1.passkit.io",
     PASSKIT_API_KEY: "pk_test_stub",
-    PASSKIT_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\nstub\n-----END PRIVATE KEY-----",
-    PASSKIT_PUBLIC_KEY: "-----BEGIN PUBLIC KEY-----\nstub\n-----END PUBLIC KEY-----",
+    PASSKIT_API_SECRET: "stub-secret",
     PASSKIT_WEBHOOK_SECRET: "whsec_stub",
   },
 }));
@@ -37,7 +36,7 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 describe("passkitClient.request", () => {
-  it("attaches PKAuth bearer header", async () => {
+  it("attaches signed JWT in Authorization header (raw, no prefix)", async () => {
     let received: string | null = null;
     server.use(
       http.get("https://api.pub1.passkit.io/programs/p1", ({ request }) => {
@@ -46,7 +45,8 @@ describe("passkitClient.request", () => {
       }),
     );
     const res = await passkitClient.request<{ id: string }>("GET", "/programs/p1");
-    expect(received).toMatch(/^PKAuth /);
+    // PassKit REST expects the JWT as the raw Authorization value (no Bearer/PKAuth prefix).
+    expect(received).toBe("test-jwt");
     expect(res.id).toBe("p1");
   });
 

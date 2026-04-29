@@ -1,5 +1,5 @@
 import pRetry from "p-retry";
-import { SignJWT, importPKCS8 } from "jose";
+import { SignJWT } from "jose";
 import * as Sentry from "@sentry/nextjs";
 import { env } from "@/lib/env";
 import { PassKitError, PassKitErrorCode } from "./types";
@@ -15,15 +15,18 @@ class PassKitClient {
   private cachedToken: { token: string; expiresAt: number } | null = null;
 
   private async signJwt(): Promise<string> {
+    // PassKit REST auth: HS256-signed JWT with claims { uid, iat, exp, web }.
+    // Spec verified from PassKit/jwt-token-generator-zapier (their official sample).
     const now = Math.floor(Date.now() / 1000);
-    const pkcs8 = env.PASSKIT_PRIVATE_KEY.replace(/\\n/g, "\n");
-    const key = await importPKCS8(pkcs8, "EdDSA");
-    return new SignJWT({ key: env.PASSKIT_API_KEY })
-      .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
+    const secret = new TextEncoder().encode(env.PASSKIT_API_SECRET);
+    return new SignJWT({
+      uid: env.PASSKIT_API_KEY,
+      web: true,
+    })
+      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setIssuedAt(now)
-      .setExpirationTime(now + 60 * 50)
-      .setIssuer(env.PASSKIT_API_KEY)
-      .sign(key);
+      .setExpirationTime(now + 60 * 60) // PassKit's reference uses 1h
+      .sign(secret);
   }
 
   private async getToken(): Promise<string> {
@@ -32,7 +35,8 @@ class PassKitClient {
       return this.cachedToken.token;
     }
     const token = await this.signJwt();
-    this.cachedToken = { token, expiresAt: now + 50 * 60 * 1000 };
+    // Token lifetime is 1h (per signJwt); cache up to 55 min to leave headroom.
+    this.cachedToken = { token, expiresAt: now + 55 * 60 * 1000 };
     return token;
   }
 
@@ -51,7 +55,9 @@ class PassKitClient {
     const run = async () => {
       const token = await this.getToken();
       const headers: Record<string, string> = {
-        authorization: `PKAuth ${token}`,
+        // PassKit's REST API expects the raw JWT as the Authorization value
+        // (no "Bearer" or "PKAuth" prefix — verified against their official samples).
+        authorization: token,
         "content-type": "application/json",
         accept: "application/json",
       };
