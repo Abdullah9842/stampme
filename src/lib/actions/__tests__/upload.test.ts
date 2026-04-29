@@ -1,18 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const sendMock = vi.fn();
+const sendMock = vi.hoisted(() => vi.fn());
+const getCurrentMerchantMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@aws-sdk/client-s3", () => ({
-  S3Client: vi.fn().mockImplementation(function () {
-    return { send: sendMock };
-  }),
-  PutObjectCommand: vi.fn().mockImplementation(function (input: unknown) {
-    return { input };
-  }),
+  S3Client: vi.fn().mockImplementation(function () { return { send: sendMock }; }),
+  PutObjectCommand: vi.fn().mockImplementation(function (input) { return { input }; }),
 }));
 
 vi.mock("@/lib/auth/current-merchant", () => ({
-  getClerkUserIdOrThrow: vi.fn().mockResolvedValue("user_123"),
+  getCurrentMerchant: getCurrentMerchantMock,
 }));
 
 vi.mock("@/lib/r2", () => ({
@@ -27,20 +24,47 @@ describe("uploadLogo", () => {
   beforeEach(() => {
     sendMock.mockReset();
     sendMock.mockResolvedValue({});
+    getCurrentMerchantMock.mockReset();
+    getCurrentMerchantMock.mockResolvedValue({ id: "m_abc", clerkUserId: "user_123" });
   });
 
-  function makeFormData(file: File, merchantId = "m_abc") {
+  function makeFormData(file: File) {
     const fd = new FormData();
     fd.set("file", file);
-    fd.set("merchantId", merchantId);
     return fd;
   }
+
+  it("returns 'Not authenticated' if getCurrentMerchant throws", async () => {
+    getCurrentMerchantMock.mockRejectedValueOnce(new Error("UNAUTHENTICATED"));
+    const file = new File([new Uint8Array(10)], "logo.png", { type: "image/png" });
+    const result = await uploadLogo(makeFormData(file));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/not authenticated/i);
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 'Onboarding required' if no Merchant row yet", async () => {
+    getCurrentMerchantMock.mockResolvedValueOnce(null);
+    const file = new File([new Uint8Array(10)], "logo.png", { type: "image/png" });
+    const result = await uploadLogo(makeFormData(file));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/onboarding/i);
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 'No file provided' when formData has no file", async () => {
+    const fd = new FormData();
+    const result = await uploadLogo(fd);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/no file/i);
+    expect(sendMock).not.toHaveBeenCalled();
+  });
 
   it("rejects non-image mime types", async () => {
     const file = new File(["x"], "doc.pdf", { type: "application/pdf" });
     const result = await uploadLogo(makeFormData(file));
     expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/file type/i);
+    if (!result.ok) expect(result.error).toMatch(/file type/i);
     expect(sendMock).not.toHaveBeenCalled();
   });
 
@@ -48,7 +72,7 @@ describe("uploadLogo", () => {
     const big = new File([new Uint8Array(2 * 1024 * 1024 + 1)], "big.png", { type: "image/png" });
     const result = await uploadLogo(makeFormData(big));
     expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/2MB/);
+    if (!result.ok) expect(result.error).toMatch(/2MB/);
   });
 
   it("uploads PNG and returns CDN URL", async () => {
@@ -56,7 +80,7 @@ describe("uploadLogo", () => {
     const result = await uploadLogo(makeFormData(file));
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.url).toMatch(/^https:\/\/cdn\.test\/merchants\/m_abc\/logo\.png$/);
+      expect(result.url).toBe("https://cdn.test/merchants/m_abc/logo.png");
     }
     expect(sendMock).toHaveBeenCalledTimes(1);
   });
@@ -73,6 +97,6 @@ describe("uploadLogo", () => {
     const file = new File([new Uint8Array(10)], "logo.png", { type: "image/png" });
     const result = await uploadLogo(makeFormData(file));
     expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/upload failed/i);
+    if (!result.ok) expect(result.error).toMatch(/upload failed/i);
   });
 });

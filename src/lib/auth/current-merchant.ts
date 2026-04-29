@@ -1,7 +1,8 @@
 import "server-only";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
+import { redirect } from "@/lib/i18n/navigation";
 
 export async function getClerkUserIdOrThrow(): Promise<string> {
   const { userId } = await auth();
@@ -20,14 +21,12 @@ export async function getCurrentMerchant() {
 /**
  * Loads the merchant or redirects to /onboarding when missing.
  * Use this in protected merchant pages (NOT during onboarding itself).
- *
- * TODO(task-18): The marketing site uses next-intl locale prefixes (/ar, /en).
- * Auth-protected pages live under /[locale]/onboarding. The non-prefixed redirect
- * here relies on next-intl middleware rewriting it to the active locale on response.
- * If that assumption is wrong, the integration test in Task 18 will catch it.
  */
 export async function requireMerchant() {
   const m = await getCurrentMerchant();
-  if (!m) redirect("/onboarding");
+  if (!m) {
+    const locale = await getLocale();
+    redirect({ href: "/onboarding", locale });
+  }
   return m;
 }
