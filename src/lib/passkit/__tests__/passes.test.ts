@@ -1,104 +1,83 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { http, HttpResponse } from "msw";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 
-vi.mock("jose", () => ({
-  SignJWT: vi.fn().mockImplementation(function () {
-    return {
-      setProtectedHeader: vi.fn().mockReturnThis(),
-      setIssuedAt: vi.fn().mockReturnThis(),
-      setExpirationTime: vi.fn().mockReturnThis(),
-      setIssuer: vi.fn().mockReturnThis(),
-      sign: vi.fn().mockResolvedValue("test-jwt"),
-    };
-  }),
-  importPKCS8: vi.fn().mockResolvedValue("mock-key"),
-}));
-
+// ---------------------------------------------------------------------------
+// Env mock
+// ---------------------------------------------------------------------------
 vi.mock("@/lib/env", () => ({
   env: {
-    PASSKIT_API_URL: "https://api.pub1.passkit.io",
-    PASSKIT_API_KEY: "pk_test_stub",
-    PASSKIT_API_SECRET: "stub-secret",
+    PASSKIT_CERTIFICATE: "-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----",
+    PASSKIT_KEY: "-----BEGIN EC PRIVATE KEY-----\nfake\n-----END EC PRIVATE KEY-----",
+    PASSKIT_CA_CHAIN: "-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----",
     PASSKIT_WEBHOOK_SECRET: "whsec_stub",
     NODE_ENV: "test",
   },
 }));
 
-const { findUniqueProgram, findUniquePass, createPass } = vi.hoisted(() => ({
-  findUniqueProgram: vi.fn().mockResolvedValue({ id: "lp_1", passKitProgramId: "prg_1", stampsRequired: 10 }),
-  findUniquePass: vi.fn().mockResolvedValue({ id: "p_1", passKitPassId: "psk_x", program: { stampsRequired: 10 } }),
+// ---------------------------------------------------------------------------
+// DB mock (for flagPassIssueFailure only)
+// ---------------------------------------------------------------------------
+const { createPass } = vi.hoisted(() => ({
   createPass: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => ({
   db: {
-    loyaltyProgram: { findUnique: findUniqueProgram },
-    pass: { findUnique: findUniquePass, create: createPass },
+    pass: { create: createPass },
   },
 }));
 
-import { server } from "./msw-server";
 import { issuePass, markRedeemed, updatePassStamps, flagPassIssueFailure } from "../passes";
+import { PassKitError, PassKitErrorCode } from "../types";
 
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
-describe("issuePass", () => {
-  it("creates a member with phone identifier and returns wallet URLs", async () => {
-    server.use(
-      http.post("https://api.pub1.passkit.io/members/member", async ({ request }) => {
-        expect(request.headers.get("idempotency-key")).toBe("idem-12345");
-        const body = (await request.json()) as Record<string, unknown>;
-        expect(body.programId).toBe("prg_1");
-        expect((body.person as Record<string, unknown>).phone).toBe("+966501234567");
-        return HttpResponse.json({
-          id: "psk_x",
-          links: {
-            apple: "https://pub1.pskt.io/psk_x?type=apple",
-            google: "https://pub1.pskt.io/psk_x?type=google",
-          },
-        });
-      }),
-    );
-    const res = await issuePass({
+// ---------------------------------------------------------------------------
+// Stub behaviour assertions
+// The three pass operation functions are STUB IMPL ONLY pending Plan 4/5.
+// They must throw PassKitError with code UNKNOWN.
+// ---------------------------------------------------------------------------
+
+describe("issuePass — stub", () => {
+  it("throws PassKitError with code UNKNOWN", async () => {
+    const err = await issuePass({
       programId: "prg_1",
       customerPhone: "+966501234567",
       idempotencyKey: "idem-12345",
-    });
-    expect(res.passKitPassId).toBe("psk_x");
-    expect(res.applePassUrl).toContain("apple");
-    expect(res.googleWalletUrl).toContain("google");
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(PassKitError);
+    expect(err.code).toBe(PassKitErrorCode.UNKNOWN);
+    expect(err.message).toContain("pending Plan 4/5");
   });
 });
 
-describe("updatePassStamps", () => {
-  it("PUTs member with stamps field", async () => {
-    server.use(
-      http.put("https://api.pub1.passkit.io/members/member/psk_x", async ({ request }) => {
-        const body = (await request.json()) as Record<string, unknown>;
-        expect((body.fields as Record<string, unknown>).stamps).toBe("3/10");
-        return HttpResponse.json({ ok: true });
-      }),
-    );
-    await updatePassStamps({ passKitPassId: "psk_x", stampsCount: 3, idempotencyKey: "stamp-3-psk_x" });
+describe("updatePassStamps — stub", () => {
+  it("throws PassKitError with code UNKNOWN", async () => {
+    const err = await updatePassStamps({
+      passKitPassId: "psk_x",
+      stampsCount: 3,
+      idempotencyKey: "stamp-3-psk_x",
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(PassKitError);
+    expect(err.code).toBe(PassKitErrorCode.UNKNOWN);
   });
 });
 
-describe("markRedeemed", () => {
-  it("resets stamps to 0 + tags redemption", async () => {
-    server.use(
-      http.put("https://api.pub1.passkit.io/members/member/psk_x", async ({ request }) => {
-        const body = (await request.json()) as Record<string, unknown>;
-        expect((body.fields as Record<string, unknown>).stamps).toBe("0/10");
-        expect((body.metadata as Record<string, unknown>).lastRedemptionAt).toBeTruthy();
-        return HttpResponse.json({ ok: true });
-      }),
-    );
-    await markRedeemed({ passKitPassId: "psk_x", idempotencyKey: "redeem-psk_x-1" });
+describe("markRedeemed — stub", () => {
+  it("throws PassKitError with code UNKNOWN", async () => {
+    const err = await markRedeemed({
+      passKitPassId: "psk_x",
+      idempotencyKey: "redeem-psk_x-1",
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(PassKitError);
+    expect(err.code).toBe(PassKitErrorCode.UNKNOWN);
   });
 });
 
+// ---------------------------------------------------------------------------
+// flagPassIssueFailure — DB-only, fully implemented
+// ---------------------------------------------------------------------------
 describe("flagPassIssueFailure", () => {
   it("writes a Pass row with ISSUE_FAILED status", async () => {
     createPass.mockResolvedValue({ id: "p_failed" });
@@ -116,5 +95,12 @@ describe("flagPassIssueFailure", () => {
         passKitPassId: expect.stringMatching(/^failed_/),
       }),
     });
+  });
+
+  it("propagates DB errors without wrapping", async () => {
+    createPass.mockRejectedValue(new Error("DB connection lost"));
+    await expect(
+      flagPassIssueFailure({ programId: "lp_1", customerPhone: "+966500000000", reason: "x" }),
+    ).rejects.toThrow("DB connection lost");
   });
 });

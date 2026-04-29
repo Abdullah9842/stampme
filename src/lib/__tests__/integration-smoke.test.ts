@@ -35,32 +35,36 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-// Plan 3: env.ts now requires PassKit vars; mock env to bypass Zod validation
-// at module-load time when this test pulls in the action import chain.
+// Plan 3 (gRPC rewrite): env.ts now requires PassKit PEM cert vars instead of REST key/secret.
+// Mock env to bypass Zod validation at module-load time.
 vi.mock("@/lib/env", () => ({
   env: {
     NEXT_PUBLIC_APP_URL: "http://localhost:3000",
     NODE_ENV: "test",
-    PASSKIT_API_URL: "https://api.pub1.passkit.io",
-    PASSKIT_API_KEY: "stub",
-    PASSKIT_API_SECRET: "stub-secret",
+    PASSKIT_CERTIFICATE: "-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----",
+    PASSKIT_KEY: "-----BEGIN EC PRIVATE KEY-----\nfake\n-----END EC PRIVATE KEY-----",
+    PASSKIT_CA_CHAIN: "-----BEGIN CERTIFICATE-----\nfake\n-----END CERTIFICATE-----",
     PASSKIT_WEBHOOK_SECRET: "stub",
     CRON_SECRET: "stub-cron-secret-for-smoke-test-only",
     MARGIN_ALERT_EMAIL: "smoke@test.local",
     MARGIN_PASS_COST_USD: 0.10,
   },
 }));
-vi.mock("jose", () => ({
-  SignJWT: vi.fn().mockImplementation(function () {
-    return {
-      setProtectedHeader: vi.fn().mockReturnThis(),
-      setIssuedAt: vi.fn().mockReturnThis(),
-      setExpirationTime: vi.fn().mockReturnThis(),
-      setIssuer: vi.fn().mockReturnThis(),
-      sign: vi.fn().mockResolvedValue("test-jwt"),
-    };
-  }),
-  importPKCS8: vi.fn().mockResolvedValue("mock-key"),
+
+// Mock passkit-node-sdk gRPC clients so importing programs.ts doesn't require
+// the full proto runtime (google-protobuf etc.) in a test environment.
+vi.mock("passkit-node-sdk/io/member/a_rpc_grpc_pb", () => ({
+  MembersClient: class { },
+}));
+vi.mock("passkit-node-sdk/io/core/a_rpc_templates_grpc_pb", () => ({
+  TemplatesClient: class { },
+}));
+vi.mock("passkit-node-sdk/io/core/a_rpc_images_grpc_pb", () => ({
+  ImagesClient: class { },
+}));
+vi.mock("@grpc/grpc-js", () => ({
+  credentials: { createSsl: vi.fn().mockReturnValue({}) },
+  makeGenericClientConstructor: vi.fn().mockReturnValue(class {}),
 }));
 
 describe("plan-2 surface area", () => {

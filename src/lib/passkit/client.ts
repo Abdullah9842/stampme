@@ -1,142 +1,39 @@
-import pRetry from "p-retry";
-import { SignJWT } from "jose";
-import * as Sentry from "@sentry/nextjs";
+import "server-only";
+import * as grpc from "@grpc/grpc-js";
+import { MembersClient } from "passkit-node-sdk/io/member/a_rpc_grpc_pb";
+import { TemplatesClient } from "passkit-node-sdk/io/core/a_rpc_templates_grpc_pb";
+import { ImagesClient } from "passkit-node-sdk/io/core/a_rpc_images_grpc_pb";
 import { env } from "@/lib/env";
-import { PassKitError, PassKitErrorCode } from "./types";
 
-interface RequestOpts {
-  body?: unknown;
-  idempotencyKey?: string;
-  query?: Record<string, string | number | undefined>;
-  signal?: AbortSignal;
-}
+const GRPC_HOST = "grpc.pub1.passkit.io:443";
 
-class PassKitClient {
-  private cachedToken: { token: string; expiresAt: number } | null = null;
+class PassKitGrpc {
+  readonly members: InstanceType<typeof MembersClient>;
+  readonly templates: InstanceType<typeof TemplatesClient>;
+  readonly images: InstanceType<typeof ImagesClient>;
 
-  private async signJwt(): Promise<string> {
-    // PassKit REST auth: HS256-signed JWT with claims { uid, iat, exp, web }.
-    // Spec verified from PassKit/jwt-token-generator-zapier (their official sample).
-    const now = Math.floor(Date.now() / 1000);
-    const secret = new TextEncoder().encode(env.PASSKIT_API_SECRET);
-    return new SignJWT({
-      uid: env.PASSKIT_API_KEY,
-      web: true,
-    })
-      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
-      .setIssuedAt(now)
-      .setExpirationTime(now + 60 * 60) // PassKit's reference uses 1h
-      .sign(secret);
-  }
-
-  private async getToken(): Promise<string> {
-    const now = Date.now();
-    if (this.cachedToken && this.cachedToken.expiresAt > now + 60_000) {
-      return this.cachedToken.token;
-    }
-    const token = await this.signJwt();
-    // Token lifetime is 1h (per signJwt); cache up to 55 min to leave headroom.
-    this.cachedToken = { token, expiresAt: now + 55 * 60 * 1000 };
-    return token;
-  }
-
-  async request<T>(
-    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
-    path: string,
-    opts: RequestOpts = {},
-  ): Promise<T> {
-    const url = new URL(path, env.PASSKIT_API_URL);
-    if (opts.query) {
-      for (const [k, v] of Object.entries(opts.query)) {
-        if (v !== undefined) url.searchParams.set(k, String(v));
-      }
-    }
-
-    const run = async () => {
-      const token = await this.getToken();
-      const headers: Record<string, string> = {
-        // PassKit's REST API expects the raw JWT as the Authorization value
-        // (no "Bearer" or "PKAuth" prefix — verified against their official samples).
-        authorization: token,
-        "content-type": "application/json",
-        accept: "application/json",
-      };
-      if (opts.idempotencyKey) headers["idempotency-key"] = opts.idempotencyKey;
-
-      const res = await fetch(url, {
-        method,
-        headers,
-        body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-        signal: opts.signal,
-      });
-
-      const text = await res.text();
-      const json = text ? safeJson(text) : null;
-
-      if (res.status >= 200 && res.status < 300) return json as T;
-
-      const code = mapStatus(res.status);
-      throw new PassKitError({
-        code,
-        message: extractMessage(json) ?? `PassKit ${method} ${path} → ${res.status}`,
-        status: res.status,
-        upstream: json ?? text,
-      });
-    };
-
-    try {
-      return await pRetry(run, {
-        retries: 2, // total 3 attempts
-        minTimeout: 250,
-        factor: 2,
-        randomize: true,
-        shouldRetry: (context: { error: unknown }) => {
-          const err = context.error;
-          if (!(err instanceof PassKitError)) return true; // network errors retry
-          const status = err.status ?? 500;
-          return status >= 500 || status === 408 || status === 429;
-        },
-      });
-    } catch (e) {
-      const final =
-        e instanceof PassKitError
-          ? e
-          : new PassKitError({
-              code: PassKitErrorCode.NETWORK,
-              message: (e as Error).message ?? "passkit request failed",
-              cause: e,
-            });
-      Sentry.captureException(final, {
-        tags: { vendor: "passkit", endpoint: `${method} ${path}`, code: final.code },
-        extra: { status: final.status, upstream: final.upstream },
-      });
-      throw final;
-    }
+  constructor() {
+    // mTLS credentials: ca chain (root cert), private key, client cert — in that order
+    // per @grpc/grpc-js createSsl(rootCerts, privateKey, certChain)
+    const credentials = grpc.credentials.createSsl(
+      Buffer.from(env.PASSKIT_CA_CHAIN),
+      Buffer.from(env.PASSKIT_KEY),
+      Buffer.from(env.PASSKIT_CERTIFICATE),
+    );
+    this.members = new MembersClient(GRPC_HOST, credentials);
+    this.templates = new TemplatesClient(GRPC_HOST, credentials);
+    this.images = new ImagesClient(GRPC_HOST, credentials);
   }
 }
 
-function safeJson(text: string) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
+let _client: PassKitGrpc | null = null;
+
+export function passkitGrpc(): PassKitGrpc {
+  if (!_client) _client = new PassKitGrpc();
+  return _client;
 }
 
-function extractMessage(json: unknown): string | undefined {
-  if (!json || typeof json !== "object") return undefined;
-  const j = json as Record<string, unknown>;
-  return (j.message as string) ?? (j.error as string) ?? undefined;
+// Reset singleton — used in tests only
+export function _resetPasskitGrpcSingleton(): void {
+  _client = null;
 }
-
-function mapStatus(status: number): PassKitErrorCode {
-  if (status === 401 || status === 403) return PassKitErrorCode.AUTH;
-  if (status === 404) return PassKitErrorCode.NOT_FOUND;
-  if (status === 409) return PassKitErrorCode.CONFLICT;
-  if (status === 422) return PassKitErrorCode.VALIDATION;
-  if (status === 429) return PassKitErrorCode.RATE_LIMITED;
-  if (status >= 500) return PassKitErrorCode.UPSTREAM;
-  return PassKitErrorCode.UNKNOWN;
-}
-
-export const passkitClient = new PassKitClient();
