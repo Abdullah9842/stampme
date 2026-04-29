@@ -86,3 +86,13 @@ declare module "passkit-node-sdk/io/common/common_objects_pb" {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   export const Id: any;
 }
+
+declare module "passkit-node-sdk/io/member/member_pb" {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  export const Member: any;
+}
+
+declare module "passkit-node-sdk/io/common/personal_pb" {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  export const Person: any;
+}

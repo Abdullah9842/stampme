@@ -55,8 +55,9 @@ const schema = z.object({
 
   CRON_SECRET: z.string().min(32),
   STAFF_JWT_SECRET: z.string().optional(),
-  UPSTASH_REDIS_REST_URL: optionalUrl,
-  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+  UPSTASH_REDIS_REST_URL: z.string().url(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(20),
+  ENROLLMENT_HMAC_SECRET: z.string().min(32, "must be at least 32 chars"),
 
   UNIFONIC_APP_SID: z.string().optional(),
   UNIFONIC_SENDER_NAME: z.string().optional(),

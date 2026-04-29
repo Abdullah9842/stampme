@@ -60,7 +60,7 @@ export type UpdateProgramTemplateInput = z.infer<typeof UpdateProgramTemplateInp
 export const IssuePassInput = z.object({
   programId: z.string().min(1),
   customerPhone: z.string().regex(/^\+?[1-9]\d{6,14}$/),
-  idempotencyKey: z.string().min(8),
+  idempotencyKey: z.string().min(8).optional(), // auto-derived from phone+program if omitted
 });
 export type IssuePassInput = z.infer<typeof IssuePassInput>;
 
