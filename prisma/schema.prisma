@@ -94,7 +94,7 @@ model LoyaltyProgram {
   name             String
   stampsRequired   Int     @default(10)
   rewardLabel      String
-  passKitProgramId String  @unique
+  passKitProgramId String? @unique
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
