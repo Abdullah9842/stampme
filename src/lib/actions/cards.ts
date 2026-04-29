@@ -2,6 +2,7 @@
 
 import "server-only";
 import { revalidatePath } from "next/cache";
+import * as Sentry from "@sentry/nextjs";
 import { db } from "@/lib/db";
 import { requireMerchant } from "@/lib/auth/current-merchant";
 import {
@@ -11,6 +12,7 @@ import {
   type UpdateCardInput,
 } from "@/lib/validation/card";
 import type { ActionResult } from "@/lib/actions/onboarding";
+import { syncProgram } from "./syncProgram";
 
 export async function createCard(
   input: CreateCardInput,
@@ -35,6 +37,11 @@ export async function createCard(
       rewardLabel: parsed.data.rewardLabel,
       passKitProgramId: null,
     },
+  });
+
+  // Fire-and-forget: sync failure should never block card creation
+  syncProgram({ loyaltyProgramId: program.id }).catch((e) => {
+    Sentry.captureException(e, { tags: { stage: "card-create-sync" } });
   });
 
   revalidatePath("/cards");
