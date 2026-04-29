@@ -20,6 +20,15 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/i18n/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("next-intl/server", () => ({ getLocale: vi.fn().mockResolvedValue("ar") }));
 
+const getUserMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@clerk/nextjs/server", () => ({
+  auth: vi.fn().mockResolvedValue({ userId: "user_42" }),
+  clerkClient: vi.fn().mockResolvedValue({
+    users: { getUser: getUserMock },
+  }),
+}));
+
 import { finishOnboarding } from "@/lib/actions/onboarding";
 
 describe("finishOnboarding", () => {
@@ -28,6 +37,14 @@ describe("finishOnboarding", () => {
     upsert.mockReset();
     findFirst.mockReset();
     findFirst.mockResolvedValue(null); // slug never taken by default
+
+    getUserMock.mockReset();
+    getUserMock.mockResolvedValue({
+      primaryEmailAddress: { emailAddress: "user42@example.com" },
+      emailAddresses: [{ emailAddress: "user42@example.com" }],
+      primaryPhoneNumber: null,
+      phoneNumbers: [],
+    });
   });
 
   it("returns validation error on bad input", async () => {
@@ -47,6 +64,17 @@ describe("finishOnboarding", () => {
       brandColor: "#112233",
       // acceptedTerms omitted on purpose
     } as any);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/terms/i);
+  });
+
+  it("rejects acceptedTerms: false explicitly (I3 hardening)", async () => {
+    const result = await finishOnboarding({
+      name: "My Cafe",
+      vertical: "CAFE",
+      brandColor: "#112233",
+      acceptedTerms: false,
+    });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/terms/i);
   });
@@ -72,9 +100,14 @@ describe("finishOnboarding", () => {
           brandColor: "#112233",
           logoUrl: "https://cdn/x.png",
           clerkUserId: "user_42",
+          ownerEmail: "user42@example.com",
         }),
       }),
     );
+
+    // I4: verify revalidatePath is called on success
+    const { revalidatePath } = await import("next/cache");
+    expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
   });
 
   it("appends suffix when slug is taken", async () => {
@@ -104,7 +137,7 @@ describe("finishOnboarding", () => {
       brandColor: "#aabbcc",
       acceptedTerms: true,
     });
-    const callArg = upsert.mock.calls[0][0];
+    const callArg = upsert.mock.calls[0]![0];
     // slug should NOT be in the update payload
     expect(callArg.update).not.toHaveProperty("slug");
     expect(callArg.update.name).toBe("Renamed Cafe");
