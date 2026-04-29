@@ -9,6 +9,8 @@ const isProtectedRoute = createRouteMatcher([
   "/:locale/dashboard(.*)",
   "/:locale/onboarding(.*)",
   "/:locale/programs(.*)",
+  "/:locale/cards(.*)",
+  "/:locale/settings(.*)",
 ]);
 
 const isApiRoute = createRouteMatcher(["/api/(.*)", "/c/(.*)", "/scan(.*)"]);
@@ -19,10 +21,14 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (isApiRoute(req)) {
-    return NextResponse.next();
+    const apiResponse = NextResponse.next();
+    apiResponse.headers.set("x-pathname", req.nextUrl.pathname);
+    return apiResponse;
   }
 
-  return intlMiddleware(req);
+  const response = intlMiddleware(req);
+  response.headers.set("x-pathname", req.nextUrl.pathname);
+  return response;
 });
 
 export const config = {
