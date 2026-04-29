@@ -37,14 +37,14 @@ export async function syncProgram(input: Input): Promise<SyncProgramResult> {
     });
   }
 
-  if (!program.merchant.logoUrl) {
-    throw new Error("merchant logo is required before syncing to wallet");
-  }
-
+  // logoUrl is optional at sync time — PassKit will use a default until the
+  // merchant uploads one. createProgram doesn't currently apply logoUrl to the
+  // template; the field is reserved for a future updateProgramTemplate that
+  // sets the logo image (Plan 4/5 territory).
   const designPayload = {
     name: program.name,
     brandColor: program.merchant.brandColor,
-    logoUrl: program.merchant.logoUrl,
+    logoUrl: program.merchant.logoUrl ?? "https://stampme.vercel.app/icon.png",
     rewardLabel: program.rewardLabel,
     stampsRequired: program.stampsRequired,
   };
