@@ -18,12 +18,10 @@ export const onboardingStep2Schema = z.object({
   brandColor: hexColor,
 });
 
-// Zod 4: errorMap renamed to error (function returning string | ZodIssue).
-// z.literal(true, { errorMap: ... }) is Zod 3 API — not valid in Zod 4.
+// Zod 4: literal accepts a `message` string directly (errorMap was Zod 3 API).
 export const onboardingStep3Schema = z.object({
   acceptedTerms: z.literal(true, {
-    // Zod 4 shim: uses `error` key instead of `errorMap`
-    error: () => "You must accept the terms",
+    message: "You must accept the terms",
   }),
 });
 
