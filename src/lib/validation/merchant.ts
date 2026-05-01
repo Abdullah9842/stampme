@@ -47,7 +47,7 @@ export const updateMerchantSchema = z
 
 export const setStaffPinSchema = z
   .object({
-    pin: z.string().regex(/^\d{4}$/, "PIN must be 4 digits"),
+    pin: z.string().regex(/^\d{6}$/, "PIN must be 6 digits"),
     confirmPin: z.string(),
   })
   .refine((d) => d.pin === d.confirmPin, {

@@ -43,8 +43,8 @@ export function StaffPinForm({ hasExistingPin }: Props) {
             id="pin"
             type="password"
             inputMode="numeric"
-            pattern="\d{4}"
-            maxLength={4}
+            pattern="\d{6}"
+            maxLength={6}
             value={pin}
             onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
             required
@@ -56,8 +56,8 @@ export function StaffPinForm({ hasExistingPin }: Props) {
             id="confirm"
             type="password"
             inputMode="numeric"
-            pattern="\d{4}"
-            maxLength={4}
+            pattern="\d{6}"
+            maxLength={6}
             value={confirmPin}
             onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ""))}
             required

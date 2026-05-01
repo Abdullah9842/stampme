@@ -64,24 +64,29 @@ describe("setStaffPin", () => {
   });
 
   it("rejects mismatched confirm", async () => {
-    const r = await setStaffPin({ pin: "1234", confirmPin: "0000" });
+    const r = await setStaffPin({ pin: "123456", confirmPin: "000000" });
     expect(r.ok).toBe(false);
   });
 
   it("rejects non-digit pin", async () => {
-    const r = await setStaffPin({ pin: "abcd", confirmPin: "abcd" });
+    const r = await setStaffPin({ pin: "abcdef", confirmPin: "abcdef" });
+    expect(r.ok).toBe(false);
+  });
+
+  it("rejects 4-digit pin (must be 6)", async () => {
+    const r = await setStaffPin({ pin: "1234", confirmPin: "1234" });
     expect(r.ok).toBe(false);
   });
 
   it("replaces existing pin atomically", async () => {
     staffPinCreate.mockResolvedValue({ id: "sp_1" });
-    const r = await setStaffPin({ pin: "1234", confirmPin: "1234" });
+    const r = await setStaffPin({ pin: "123456", confirmPin: "123456" });
     expect(r.ok).toBe(true);
     expect(staffPinDeleteMany).toHaveBeenCalledWith({ where: { merchantId: "m_1" } });
     expect(staffPinCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
         merchantId: "m_1",
-        pinHash: "hashed:1234",
+        pinHash: "hashed:123456",
         label: "default",
       }),
     });

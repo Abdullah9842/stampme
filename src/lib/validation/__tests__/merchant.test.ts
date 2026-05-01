@@ -49,10 +49,11 @@ describe("finishOnboardingSchema", () => {
 });
 
 describe("setStaffPinSchema", () => {
-  it("requires 4-digit pin and matching confirm", () => {
-    expect(setStaffPinSchema.safeParse({ pin: "1234", confirmPin: "1234" }).success).toBe(true);
-    expect(setStaffPinSchema.safeParse({ pin: "1234", confirmPin: "9999" }).success).toBe(false);
-    expect(setStaffPinSchema.safeParse({ pin: "abcd", confirmPin: "abcd" }).success).toBe(false);
+  it("requires 6-digit pin and matching confirm", () => {
+    expect(setStaffPinSchema.safeParse({ pin: "123456", confirmPin: "123456" }).success).toBe(true);
+    expect(setStaffPinSchema.safeParse({ pin: "123456", confirmPin: "999999" }).success).toBe(false);
+    expect(setStaffPinSchema.safeParse({ pin: "abcdef", confirmPin: "abcdef" }).success).toBe(false);
+    expect(setStaffPinSchema.safeParse({ pin: "1234", confirmPin: "1234" }).success).toBe(false);
   });
 });
 
