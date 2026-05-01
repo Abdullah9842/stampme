@@ -36,12 +36,12 @@ const schema = z.object({
   R2_BUCKET: z.string().optional(),
   R2_PUBLIC_URL: optionalUrl,
 
-  HYPERPAY_ENV: z.enum(["test", "live"]).default("test"),
-  HYPERPAY_BASE_URL: urlWithDefault("https://eu-test.oppwa.com"),
-  HYPERPAY_ACCESS_TOKEN: z.string().optional(),
-  HYPERPAY_ENTITY_ID_MADA: z.string().optional(),
-  HYPERPAY_ENTITY_ID_CARD: z.string().optional(),
-  HYPERPAY_WEBHOOK_KEY_HEX: z.string().optional(),
+  MYFATOORAH_API_KEY: z.string().min(20),
+  MYFATOORAH_BASE_URL: z.string().url(),
+  MYFATOORAH_WEBHOOK_SECRET: z.string().min(10),
+
+  // Safety flag — never auto-charge without explicit user action (default false)
+  BILLING_AUTO_CHARGE_ENABLED: z.coerce.boolean().default(false),
 
   // PassKit gRPC mTLS credentials — multi-line PEM strings.
   // Obtain from PassKit dashboard → Developer Tools → SDK Credentials.

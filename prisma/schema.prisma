@@ -40,6 +40,19 @@ enum PassStatus {
   EXPIRED
   DELETED
   ISSUE_FAILED
+  REWARD_READY
+}
+
+enum PaymentProvider {
+  MYFATOORAH
+  // Future: STRIPE, HYPERPAY, etc.
+}
+
+enum ChargeStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
 }
 
 // ---------- Models (spec §7) ----------
@@ -57,9 +70,10 @@ model Merchant {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  subscription Subscription?
-  programs     LoyaltyProgram[]
-  staffPins    StaffPin[]
+  subscription  Subscription?
+  programs      LoyaltyProgram[]
+  staffPins     StaffPin[]
+  paymentMethod PaymentMethod?
 
   @@index([clerkUserId])
 }
@@ -69,12 +83,49 @@ model Subscription {
   merchantId       String             @unique
   plan             Plan
   status           SubscriptionStatus
-  hyperpayRef      String?
+  provider         PaymentProvider    @default(MYFATOORAH)
+  providerRef      String?            // RENAMED from hyperpayRef — generic provider invoice/subscription id
   currentPeriodEnd DateTime
+  trialEndsAt      DateTime?          // null after trial ends
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
   merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  charges  Charge[]
+}
+
+model PaymentMethod {
+  id          String          @id @default(cuid())
+  merchantId  String          @unique
+  provider    PaymentProvider @default(MYFATOORAH)
+  recurringId String          @unique // MyFatoorah RecurringId returned after first successful charge
+  last4       String
+  brand       String          // "MADA" | "VISA" | "MASTER" | etc
+  expMonth    Int
+  expYear     Int
+  holderName  String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+}
+
+model Charge {
+  id                String          @id @default(cuid())
+  subscriptionId    String
+  amountSar         Int             // Stored in halalas (1 SAR = 100 halalas) for integer precision
+  status            ChargeStatus
+  provider          PaymentProvider @default(MYFATOORAH)
+  providerInvoiceId String?         @unique
+  providerPaymentId String?
+  failureReason     String?
+  attemptedAt       DateTime        @default(now())
+  succeededAt       DateTime?
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([status])
 }
 
 model StaffPin {
