@@ -1,9 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { Webhook } from "svix";
 import slugify from "slugify";
+import * as Sentry from "@sentry/nextjs";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { clerkUserCreatedSchema } from "@/lib/validation";
+import { startTrial } from "@/lib/actions/billing";
 
 export const runtime = "nodejs";
 
@@ -74,7 +76,7 @@ export async function POST(req: NextRequest) {
     slug = `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`;
   }
 
-  await db.merchant.upsert({
+  const merchant = await db.merchant.upsert({
     where: { clerkUserId },
     update: {},
     create: {
@@ -87,6 +89,16 @@ export async function POST(req: NextRequest) {
       brandColor: "#0A7C36",
     },
   });
+
+  // Auto-start 14-day trial on first sign-up (idempotent — safe to call again)
+  try {
+    await startTrial(merchant.id);
+  } catch (err) {
+    // Trial creation failure must not fail the webhook — Clerk retries on non-2xx
+    Sentry.captureException(err, {
+      tags: { action: "clerk-webhook:startTrial", clerkUserId },
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }
