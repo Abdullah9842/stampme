@@ -37,3 +37,11 @@ export class RateLimitError extends Error {
     this.name = "RateLimitError";
   }
 }
+
+/** Authenticated merchant actions: 60 req per minute per Clerk user — generous for legitimate use, blocks abuse */
+export const authedMerchantLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(60, "1 m"),
+  analytics: true,
+  prefix: "rl:authed:merchant",
+});

@@ -14,6 +14,11 @@ vi.mock("@/lib/db", () => ({
 vi.mock("@/lib/passkit/programs", () => ({ createProgram, updateProgramTemplate }));
 vi.mock("@clerk/nextjs/server", () => ({ auth: authMock }));
 
+const authedLimiterMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/ratelimit", () => ({
+  authedMerchantLimiter: { limit: authedLimiterMock },
+}));
+
 import { syncProgram } from "../syncProgram";
 
 beforeEach(() => {
@@ -23,9 +28,25 @@ beforeEach(() => {
   updateProgramTemplate.mockReset();
   authMock.mockReset();
   authMock.mockResolvedValue({ userId: "user_owner" });
+  authedLimiterMock.mockReset();
+  authedLimiterMock.mockResolvedValue({ success: true });
 });
 
 describe("syncProgram", () => {
+  it("throws RATE_LIMITED when authed limiter trips", async () => {
+    findUnique.mockResolvedValue({
+      id: "lp_1",
+      merchantId: "m_1",
+      passKitProgramId: null,
+      name: "Loyalty",
+      stampsRequired: 10,
+      rewardLabel: "Free coffee",
+      merchant: { id: "m_1", clerkUserId: "user_owner", name: "Brew Bros", brandColor: "#0F4C3A", logoUrl: null },
+    });
+    authedLimiterMock.mockResolvedValueOnce({ success: false, reset: Date.now() + 1000 });
+    await expect(syncProgram({ loyaltyProgramId: "lp_1" })).rejects.toThrow(/rate limit/i);
+  });
+
   const baseProgram = {
     id: "lp_1",
     merchantId: "m_1",

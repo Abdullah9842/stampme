@@ -13,6 +13,7 @@ import {
   type FinishOnboardingInput,
 } from "@/lib/validation/merchant";
 import { generateMerchantSlug, ensureUniqueSlug } from "@/lib/slug";
+import { authedMerchantLimiter } from "@/lib/ratelimit";
 
 export type ActionResult<T = void> =
   | { ok: true; data: T }
@@ -22,6 +23,11 @@ export async function finishOnboarding(
   input: FinishOnboardingInput,
 ): Promise<ActionResult<{ merchantId: string; slug: string }>> {
   const userId = await getClerkUserIdOrThrow();
+
+  const rl = await authedMerchantLimiter.limit(userId);
+  if (!rl.success) {
+    return { ok: false, error: "Too many requests, slow down" };
+  }
 
   const parsed = finishOnboardingSchema.safeParse(input);
   if (!parsed.success) {

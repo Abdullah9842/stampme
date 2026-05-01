@@ -16,6 +16,11 @@ vi.mock("@/lib/auth/current-merchant", () => ({
   getClerkUserIdOrThrow: vi.fn().mockResolvedValue("user_42"),
 }));
 
+const authedLimiterMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/ratelimit", () => ({
+  authedMerchantLimiter: { limit: authedLimiterMock },
+}));
+
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/i18n/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("next-intl/server", () => ({ getLocale: vi.fn().mockResolvedValue("ar") }));
@@ -45,6 +50,21 @@ describe("finishOnboarding", () => {
       primaryPhoneNumber: null,
       phoneNumbers: [],
     });
+
+    authedLimiterMock.mockReset();
+    authedLimiterMock.mockResolvedValue({ success: true });
+  });
+
+  it("returns ok=false when authed limiter trips", async () => {
+    authedLimiterMock.mockResolvedValueOnce({ success: false, reset: Date.now() + 1000 });
+    const result = await finishOnboarding({
+      name: "My Cafe",
+      vertical: "CAFE",
+      brandColor: "#112233",
+      acceptedTerms: true,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/too many/i);
   });
 
   it("returns validation error on bad input", async () => {

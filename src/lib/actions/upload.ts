@@ -4,6 +4,7 @@ import "server-only";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getR2, R2_BUCKET, R2_PUBLIC_URL } from "@/lib/r2";
 import { getCurrentMerchant } from "@/lib/auth/current-merchant";
+import { authedMerchantLimiter } from "@/lib/ratelimit";
 
 const MAX_BYTES = 2 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/png", "image/svg+xml", "image/jpeg", "image/webp"]);
@@ -28,6 +29,11 @@ export async function uploadLogo(formData: FormData): Promise<UploadResult> {
   }
   if (!merchant) {
     return { ok: false, error: "Onboarding required before uploads" };
+  }
+
+  const rl = await authedMerchantLimiter.limit(merchant.id);
+  if (!rl.success) {
+    return { ok: false, error: "Too many requests, slow down" };
   }
 
   const file = formData.get("file");

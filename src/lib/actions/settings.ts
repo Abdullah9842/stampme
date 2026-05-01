@@ -12,12 +12,18 @@ import {
 } from "@/lib/validation/merchant";
 import { hashPin } from "@/lib/pin";
 import type { ActionResult } from "@/lib/actions/onboarding";
+import { authedMerchantLimiter } from "@/lib/ratelimit";
 
 export async function updateMerchantProfile(
   input: UpdateMerchantInput,
 ): Promise<ActionResult<{ id: string }>> {
   const merchant = await requireMerchant();
   if (!merchant) return { ok: false, error: "Merchant not found" };
+
+  const rl = await authedMerchantLimiter.limit(merchant.id);
+  if (!rl.success) {
+    return { ok: false, error: "Too many requests, slow down" };
+  }
 
   const parsed = updateMerchantSchema.safeParse(input);
   if (!parsed.success) {
@@ -49,6 +55,11 @@ export async function setStaffPin(
 ): Promise<ActionResult<{ ok: true }>> {
   const merchant = await requireMerchant();
   if (!merchant) return { ok: false, error: "Merchant not found" };
+
+  const rl = await authedMerchantLimiter.limit(merchant.id);
+  if (!rl.success) {
+    return { ok: false, error: "Too many requests, slow down" };
+  }
 
   const parsed = setStaffPinSchema.safeParse(input);
   if (!parsed.success) {

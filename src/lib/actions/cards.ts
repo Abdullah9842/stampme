@@ -14,12 +14,18 @@ import {
 } from "@/lib/validation/card";
 import type { ActionResult } from "@/lib/actions/onboarding";
 import { syncProgram } from "./syncProgram";
+import { authedMerchantLimiter } from "@/lib/ratelimit";
 
 export async function createCard(
   input: CreateCardInput,
 ): Promise<ActionResult<{ id: string }>> {
   const merchant = await requireMerchant();
   if (!merchant) return { ok: false, error: "Merchant not found" };
+
+  const rl = await authedMerchantLimiter.limit(merchant.id);
+  if (!rl.success) {
+    return { ok: false, error: "Too many requests, slow down" };
+  }
 
   const parsed = createCardSchema.safeParse(input);
   if (!parsed.success) {
@@ -62,6 +68,11 @@ export async function updateCard(
 ): Promise<ActionResult<{ id: string }>> {
   const merchant = await requireMerchant();
   if (!merchant) return { ok: false, error: "Merchant not found" };
+
+  const rl = await authedMerchantLimiter.limit(merchant.id);
+  if (!rl.success) {
+    return { ok: false, error: "Too many requests, slow down" };
+  }
 
   const parsed = updateCardSchema.safeParse(input);
   if (!parsed.success) {

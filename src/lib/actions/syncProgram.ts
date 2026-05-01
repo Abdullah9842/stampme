@@ -6,6 +6,7 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { createProgram, updateProgramTemplate } from "@/lib/passkit/programs";
 import { PassKitError, PassKitErrorCode } from "@/lib/passkit/types";
+import { authedMerchantLimiter } from "@/lib/ratelimit";
 
 const Input = z.object({ loyaltyProgramId: z.string().min(1) });
 type Input = z.infer<typeof Input>;
@@ -35,6 +36,18 @@ export async function syncProgram(input: Input): Promise<SyncProgramResult> {
       code: PassKitErrorCode.AUTH,
       message: "not authorised to sync this program",
     });
+  }
+
+  // Rate limit authenticated sync requests (e.g. direct calls from merchant UI).
+  // Skipped when called from cron/webhooks (no session userId).
+  if (session?.userId) {
+    const rl = await authedMerchantLimiter.limit(session.userId);
+    if (!rl.success) {
+      throw new PassKitError({
+        code: PassKitErrorCode.RATE_LIMITED,
+        message: "Rate limit exceeded — too many sync requests",
+      });
+    }
   }
 
   // logoUrl is optional at sync time — PassKit will use a default until the

@@ -37,6 +37,11 @@ vi.mock("@/lib/actions/syncProgram", () => ({
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
+const authedLimiterMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/ratelimit", () => ({
+  authedMerchantLimiter: { limit: authedLimiterMock },
+}));
+
 import { createCard, updateCard, listCards } from "@/lib/actions/cards";
 
 describe("createCard", () => {
@@ -44,6 +49,15 @@ describe("createCard", () => {
     programCreate.mockReset();
     requireMerchant.mockReset();
     requireMerchant.mockResolvedValue({ id: "m_1" });
+    authedLimiterMock.mockReset();
+    authedLimiterMock.mockResolvedValue({ success: true });
+  });
+
+  it("returns ok=false when authed limiter trips", async () => {
+    authedLimiterMock.mockResolvedValueOnce({ success: false, reset: Date.now() + 1000 });
+    const res = await createCard({ programName: "Loyalty", stampsRequired: 10, rewardLabel: "Free" });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toMatch(/too many/i);
   });
 
   it("rejects invalid input", async () => {
@@ -77,6 +91,8 @@ describe("updateCard", () => {
     programFindFirst.mockReset();
     requireMerchant.mockReset();
     requireMerchant.mockResolvedValue({ id: "m_1" });
+    authedLimiterMock.mockReset();
+    authedLimiterMock.mockResolvedValue({ success: true });
   });
 
   it("404s when program belongs to another merchant", async () => {
@@ -103,6 +119,8 @@ describe("listCards", () => {
     programFindMany.mockReset();
     requireMerchant.mockReset();
     requireMerchant.mockResolvedValue({ id: "m_1" });
+    authedLimiterMock.mockReset();
+    authedLimiterMock.mockResolvedValue({ success: true });
   });
 
   it("returns merchant's cards", async () => {

@@ -1,0 +1,7 @@
+[install.security]
+# TODO: @vlt/security-scanner does not exist on npm (verified 2026-05-01).
+# @socketsecurity/cli exists but does not implement the bun scanner adapter interface
+# required by bun 1.3.x (bun pm scan expects a package that exports a specific API,
+# not a generic CLI tool). Re-enable once @vlt/security-scanner ships or a compatible
+# adapter is available. Tracked in audit finding L-1.
+# scanner = "@vlt/security-scanner"

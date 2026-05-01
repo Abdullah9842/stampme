@@ -18,6 +18,11 @@ vi.mock("@/lib/r2", () => ({
   R2_PUBLIC_URL: "https://cdn.test",
 }));
 
+const authedLimiterMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/ratelimit", () => ({
+  authedMerchantLimiter: { limit: authedLimiterMock },
+}));
+
 import { uploadLogo } from "@/lib/actions/upload";
 
 describe("uploadLogo", () => {
@@ -26,6 +31,8 @@ describe("uploadLogo", () => {
     sendMock.mockResolvedValue({});
     getCurrentMerchantMock.mockReset();
     getCurrentMerchantMock.mockResolvedValue({ id: "m_abc", clerkUserId: "user_123" });
+    authedLimiterMock.mockReset();
+    authedLimiterMock.mockResolvedValue({ success: true });
   });
 
   function makeFormData(file: File) {
@@ -33,6 +40,15 @@ describe("uploadLogo", () => {
     fd.set("file", file);
     return fd;
   }
+
+  it("returns ok=false when authed limiter trips", async () => {
+    authedLimiterMock.mockResolvedValueOnce({ success: false, reset: Date.now() + 1000 });
+    const file = new File([new Uint8Array(10)], "logo.png", { type: "image/png" });
+    const result = await uploadLogo(makeFormData(file));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/too many/i);
+    expect(sendMock).not.toHaveBeenCalled();
+  });
 
   it("returns 'Not authenticated' if getCurrentMerchant throws", async () => {
     getCurrentMerchantMock.mockRejectedValueOnce(new Error("UNAUTHENTICATED"));

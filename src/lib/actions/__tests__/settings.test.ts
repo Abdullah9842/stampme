@@ -30,6 +30,11 @@ vi.mock("@/lib/pin", () => ({
   hashPin: vi.fn(async (pin: string) => `hashed:${pin}`),
 }));
 
+const authedLimiterMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/ratelimit", () => ({
+  authedMerchantLimiter: { limit: authedLimiterMock },
+}));
+
 import { updateMerchantProfile, setStaffPin } from "@/lib/actions/settings";
 
 describe("updateMerchantProfile", () => {
@@ -37,6 +42,15 @@ describe("updateMerchantProfile", () => {
     merchantUpdate.mockReset();
     requireMerchant.mockReset();
     requireMerchant.mockResolvedValue({ id: "m_1" });
+    authedLimiterMock.mockReset();
+    authedLimiterMock.mockResolvedValue({ success: true });
+  });
+
+  it("returns ok=false when authed limiter trips", async () => {
+    authedLimiterMock.mockResolvedValueOnce({ success: false, reset: Date.now() + 1000 });
+    const r = await updateMerchantProfile({ brandColor: "#ff0000" });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/too many/i);
   });
 
   it("rejects empty payload", async () => {
@@ -61,6 +75,8 @@ describe("setStaffPin", () => {
     staffPinCreate.mockReset();
     requireMerchant.mockReset();
     requireMerchant.mockResolvedValue({ id: "m_1" });
+    authedLimiterMock.mockReset();
+    authedLimiterMock.mockResolvedValue({ success: true });
   });
 
   it("rejects mismatched confirm", async () => {
